@@ -1,7 +1,9 @@
 ﻿using AppMinimalApi.Models;
 using AppMinimalApi.Models.DTO;
+using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using System.IdentityModel.Tokens.Jwt;
 using System.Net;
@@ -15,18 +17,23 @@ public static class UserEndpoints
     public static void ConfigureAuthEndpoints(this WebApplication app)
     {
 
-        app.MapPost("/api/signin", SignIn)
+        app.MapPost("/auth/signin", SignIn)
                 .WithName("SignIn")
                 .Accepts<SignInRequestDTO>("application/json")
                 .Produces<APIResponse>(200)
                 .Produces(400)
                 .AllowAnonymous();
 
-        app.MapPost("/api/signup", SignUp)
+        app.MapPost("/auth/signup", SignUp)
                 .WithName("SignUp")
                 .Accepts<SignUpRequestDTO>("application/json")
                 .Produces<APIResponse>(200).Produces(400)
                 .AllowAnonymous();
+
+        app.MapGet("/api/users/", GetAll)
+               .WithName("GetAll")
+               .Produces<APIResponse>(200)
+               .RequireAuthorization("admin");
     }
 
     private async static Task<IResult> SignUp(UserManager<IdentityUser> userManager,
@@ -40,11 +47,11 @@ public static class UserEndpoints
             return Results.BadRequest(result.Errors.First());
         }
 
-        return Results.Created($"/api/users/{newUser.Id}", newUser.Id);
+        return Results.Created($"/auth/user/{newUser.Id}", newUser.Id);
     }
 
     private async static Task<IResult> SignIn(UserManager<IdentityUser> userManager,
-          [FromBody] SignUpRequestDTO model)
+          [FromBody] SignUpRequestDTO model, IConfiguration configuration)
     {
         var user = await userManager.FindByEmailAsync(model.Email);
 
@@ -54,7 +61,7 @@ public static class UserEndpoints
         if (!await userManager.CheckPasswordAsync(user, model.Password))
             return Results.BadRequest("User/Password Invalid!");
 
-        var key = Encoding.ASCII.GetBytes("dsjak@1234oldjsalLJKJLDSA");
+        var key = Encoding.ASCII.GetBytes(configuration["JwtBearerTokenSettings:SecretKey"]!);
         var tokenDescriptior = new SecurityTokenDescriptor
         {
             Subject = new ClaimsIdentity(new Claim[]
@@ -62,13 +69,21 @@ public static class UserEndpoints
                 new Claim(ClaimTypes.Email, model.Email)
             }),
             SigningCredentials = new SigningCredentials(new SymmetricSecurityKey(key), SecurityAlgorithms.HmacSha256Signature),
-            Audience = "APP",
-            Issuer = "Issuer"
+            Audience = configuration["JwtBearerTokenSettings:Audience"],
+            Issuer = configuration["JwtBearerTokenSettings:Issuer"],
+            Expires = DateTime.UtcNow.AddHours(5)
         };
 
         var tokenHandler = new JwtSecurityTokenHandler();
         var token = tokenHandler.CreateToken(tokenDescriptior);
 
-        return Results.Ok(new APIResponse { Result = tokenHandler.WriteToken(token), StatusCode = HttpStatusCode.OK});
+        return Results.Ok(new APIResponse { Result = new { token = tokenHandler.WriteToken(token) }, StatusCode = HttpStatusCode.OK});
     }
+
+    private async static Task<IResult> GetAll(UserManager<IdentityUser> userManager)
+    {
+        var users = await userManager.Users.AsNoTracking().ToListAsync();
+        return Results.Ok(new APIResponse { Result = users, StatusCode = HttpStatusCode.OK });
+    }
+
 }
