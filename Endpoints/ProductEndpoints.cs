@@ -1,4 +1,5 @@
 ﻿using AppMinimalApi.DTO;
+using AppMinimalApi.Filters;
 using AppMinimalApi.Services.interfaces;
 using FluentValidation;
 using Microsoft.AspNetCore.Mvc;
@@ -13,6 +14,7 @@ public static class ProductEndpoints
              .WithName("Create New Product")
              .Accepts<ProductDTO>("application/json")
              .Produces<APIResponse>(200)
+             .AddEndpointFilter<BasicValidator<ProductDTO>>()
              .Produces(400);
 
         app.MapPut("/products", Update)
@@ -40,9 +42,6 @@ public static class ProductEndpoints
 
     private async static Task<IResult> CreateNew(IProductService productService,IValidator<ProductDTO> validator, [FromBody] ProductDTO dto)
     {
-        var validationResult = await validator.ValidateAsync(dto);
-        if (!validationResult.IsValid)
-            return Results.BadRequest(validationResult.Errors.FirstOrDefault().ToString());
         await productService.CreateAsync(dto);
         return Results.Ok();
     }
@@ -50,13 +49,13 @@ public static class ProductEndpoints
     private async static Task<IResult> Update(IProductService productService, [FromBody] ProductDTO dto)
     {
         await productService.UpdateAsync(dto);
-        return Results.Ok();
+        return Results.NoContent();
     }
 
     private async static Task<IResult> Delete(IProductService productService, int Id)
     {
         await productService.RemoveAsync(Id);
-        return Results.Ok();
+        return Results.NoContent();
     }
 
     private async static Task<IResult> Get(IProductService productService, int Id)

@@ -29,11 +29,11 @@ public class GlobalErrorHandling
     private static Task HandleExceptionAsync(HttpContext context, Exception ex)
     {
         HttpStatusCode statusCode;
-        string stackTrace = string.Empty;
-        string message = string.Empty;
         var exceptionType = ex.GetType();
 
 
+        string stackTrace;
+        string message;
         if (exceptionType == typeof(Exception))
         {
 
