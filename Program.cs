@@ -1,6 +1,12 @@
 
 using AppMinimalApi.EF;
 using AppMinimalApi.Endpoints;
+using AppMinimalApi.Middlewares;
+using AppMinimalApi.Repositories.interfaces;
+using AppMinimalApi.Repository;
+using AppMinimalApi.Services;
+using AppMinimalApi.Services.interfaces;
+using FluentValidation;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
@@ -66,16 +72,18 @@ public class Program
         });
 
 
+        builder.Services.AddTransient<IProductRepository, ProductRepository>();
+        builder.Services.AddTransient<IProductService, ProductService>();
 
+        builder.Services.AddValidatorsFromAssemblyContaining<Program>();
+        builder.Services.AddAutoMapper(typeof(MappingConfig));
         builder.Services.AddSqlServer<AppDbContext>(builder.Configuration["ConnectionStrings:appDb"]);
         builder.Services.AddIdentity<IdentityUser, IdentityRole>()
             .AddEntityFrameworkStores<AppDbContext>();
 
         //Configure Serilog
         builder.Host.UseSerilog((ctx, lc) => lc
-                    .WriteTo.Console(LogEventLevel.Debug)
-                    .WriteTo.File("log.txt", LogEventLevel.Warning,
-                     rollingInterval: RollingInterval.Day));
+                    .WriteTo.Console(LogEventLevel.Debug));
 
         builder.Services.AddAuthentication(x =>
         {
@@ -109,8 +117,9 @@ public class Program
         app.UseHttpsRedirection();
         app.UseAuthentication();
         app.UseAuthorization();
-
+        app.UseMiddleware<GlobalErrorHandling>();
         app.ConfigureAuthEndpoints();
+        app.ConfigureProductEndpoints();
 
         app.Run();
     }

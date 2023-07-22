@@ -1,5 +1,4 @@
-﻿using AppMinimalApi.Models;
-using AppMinimalApi.Models.DTO;
+﻿using AppMinimalApi.DTO;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
@@ -29,11 +28,6 @@ public static class UserEndpoints
                 .Accepts<SignUpRequestDTO>("application/json")
                 .Produces<APIResponse>(200).Produces(400)
                 .AllowAnonymous();
-
-        app.MapGet("/api/users/", GetAll)
-               .WithName("GetAll")
-               .Produces<APIResponse>(200)
-               .RequireAuthorization("admin");
     }
 
     private async static Task<IResult> SignUp(UserManager<IdentityUser> userManager,
@@ -79,11 +73,4 @@ public static class UserEndpoints
 
         return Results.Ok(new APIResponse { Result = new { token = tokenHandler.WriteToken(token) }, StatusCode = HttpStatusCode.OK});
     }
-
-    private async static Task<IResult> GetAll(UserManager<IdentityUser> userManager)
-    {
-        var users = await userManager.Users.AsNoTracking().ToListAsync();
-        return Results.Ok(new APIResponse { Result = users, StatusCode = HttpStatusCode.OK });
-    }
-
 }

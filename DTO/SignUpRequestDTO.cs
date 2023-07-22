@@ -1,3 +1,3 @@
-﻿namespace AppMinimalApi.Models.DTO;
+﻿namespace AppMinimalApi.DTO;
 
 public record SignUpRequestDTO(string Email, string Password);

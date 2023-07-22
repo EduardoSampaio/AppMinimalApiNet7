@@ -1,3 +1,3 @@
-﻿namespace AppMinimalApi.Models.DTO;
+﻿namespace AppMinimalApi.DTO;
 
 public record SignInRequestDTO(string UserName, string Password);
